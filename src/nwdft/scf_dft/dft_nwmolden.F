@@ -91,11 +91,12 @@ c
      E        call errquit(pname//'nwmolden_movecs failed ',0,0)
          
       endif
-c     broadcast evals when reading
+c     broadcast evals and occupations when reading
       if(rw.eq.'read') then
          ispin=ma_sizeof(MT_DBL,nbf,MT_BYTE)
          if(scftype.eq.'UHF') ispin=ispin*2
          call ga_brdcst(1984, eval, ispin, 0)
+         call ga_brdcst(1985, occ, ispin, 0)
       endif
       
 c

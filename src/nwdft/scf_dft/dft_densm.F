@@ -53,7 +53,7 @@ c
 c
       double precision undovl
       parameter(undovl=-20d0*2.3025d0)
-      parameter (zero=0.d0,toll=1.d-9,one=1.d0,
+      parameter (zero=0.d0,toll=1.0d-12,one=1.d0,
      ,   kbau=1.d0,eps=1.d-4)
 c
       integer rtdb         ! FA-02-22-11, for occupations
@@ -99,11 +99,28 @@ c
         if (odftps) call pstat_on(ps_dgemm)
 c
 c       fractional occupation by orbital
+c       updated by jochen 2026-02: fractional occupations
+c       might also come from a molden file restart. rtdb switch
+c       focc:occup_switch is in such a case set in routine
+c       scf_vec_guess to a value of 2.
+c
         switch_focc=0
         status=rtdb_get(rtdb,'focc:occup_switch', mt_int,1,switch_focc)
-        if (switch_focc.eq.1 .and. status) then ! using specified occupations
+        if (switch_focc.gt.0 .and. status) then
+c
+c         use input-specified occupations or occupations coming
+c         from an initial guess in a molden file
+c
           do isp=1,ipol
-            call dft_frac_mo(rtdb,g_vecs(isp),focc,nbf,ipol,ntotel)
+            if (switch_focc.eq.1) then ! fetch input occupations
+              call dft_frac_mo(rtdb,g_vecs(isp),focc,nbf,ipol,ntotel)
+            else if (switch_focc.eq.2) then
+              noc(isp) = nbf
+            else
+              call errquit('dft_densm switch_focc out of range',
+     &          switch_focc, RTDB_ERR)
+            end if
+c
             call dft_focdm(focc(1+(isp-1)*nbf),noc(isp),geom,
      &         AO_bas_han,nbf,g_vecs(isp),g_dens(isp),toll)
           enddo  ! isp

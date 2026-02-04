@@ -76,6 +76,7 @@ c
       character*20 file_scftype
       character*255 string
       integer type, nelem, swap, handle
+      integer switch_focc
 c
 c     externals
 c
@@ -263,6 +264,19 @@ c
       else if (movecs_in .eq. 'molden') then
          nsets = 1
          if (scftype .eq. 'UHF') nsets = 2
+c
+c        need to put some information on rtdb that we have
+c        occupation numbers from the molden file
+c
+         switch_focc=2
+         if(.not.rtdb_put(rtdb,'focc:occup_switch', mt_int,1,
+     &     switch_focc)) call errquit
+     &     ('scf_vec_guess: error writing focc:occup_switch',1,
+     &     RTDB_ERR)
+c
+c        get movecs, occupations, and orbital energies, if available,
+c        from molden file:
+c
          call movecs_molden(rtdb, geom, basis,nsets, nmo, g_movecs,
      .        dbl_mb(k_eval),dbl_mb(k_occ))
          call scf_movecs_sym_adapt(basis, g_movecs, oprint,
@@ -434,7 +448,8 @@ c
          call ga_orthog_mos(basis, g_movecs)
          if (scftype .eq. 'UHF') call ga_orthog_mos(basis, g_movecs(2))
       endif
-      if(ssmear.lt.1.e-9 .and. (.not. fon)) then
+      if(ssmear.lt.1.e-9 .and. (.not. fon) .and.
+     &  movecs_in.ne.'molden') then
 c
 c     Generate correct occupation numbers
 c

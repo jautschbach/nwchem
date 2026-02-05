@@ -309,6 +309,9 @@ do
   [ -f ${TESTDIR}/${PLUMEDFILE} ] && cp ${TESTDIR}/${PLUMEDFILE} ${SCRATCHDIR}
 
 #
+# copy the molden file, if present
+#
+  [ -f ${TESTDIR}/*.molden ] && cp ${TESTDIR}/*.molden ${SCRATCHDIR}
 
 # Run the calculation in the scratch directory
 

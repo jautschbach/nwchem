@@ -65,3 +65,6 @@ fi
 ./runtests.mpi.unix procs $np x2c-h2se
 ./runtests.mpi.unix procs $np hg-1e-hfc-x2c
 #
+#--- misc. tests
+./runtests.mpi.unix procs $np cucl-molden-vecin
+

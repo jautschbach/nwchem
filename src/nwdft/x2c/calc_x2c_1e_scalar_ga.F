@@ -103,7 +103,7 @@ c     other local variables:
       integer dbg
       double precision jfac(1),kfac(1)
 
-      character*13 pname
+      character*13 pname, ctmp
 
 c     =================================================================
 
@@ -127,7 +127,6 @@ c     we should do the same here but I'm not sure yet
 
       oskel_sav = oskel
       oskel = .false.
-
 
 c     temporarily add alpha and beta model densities:
 c     TO BE REPLACED WITH 4-COMPONENT MODEL DENSITIES
@@ -159,15 +158,15 @@ c     make sure the input GAs have the correct dimension
       if (master.and.dbg>0) write (luout,*)
      &  pname//': nu, nc =',nu,nc
 
-      if (nu.lt.nc) call errquit(
-     &  'x2c uncontracted basis smaller than contracted', 1,
+      if (nu.lt.nc) call errquit(pname//
+     &  ': uncontracted basis smaller than contracted', 1,
      &  RTDB_ERR)
 
       lx2c_u2c = (nu.gt.nc)
       if (master) then
         if (lx2c_u2c) then
           write (luout,*)
-     &      'x2c INFO: the operator will be calculated in an'
+     &      'x2c INFO: the operator will first be calculated in an'
           write (luout,*)
      &      ' uncontracted auxiliary basis'
         else
@@ -201,7 +200,10 @@ c     if analyticpvp is .F. or if we need the model potential,
 c     we also need a contracted-to-uncontracted basis transformation
 c     unless the two bases are identical
 
-      lx2c_c2u = ((.not.analytic_pvp .or. modelpot_2e).and.lx2c_u2c)
+c...jochen update 2026-10: we want to keep c2u if we have properties
+c     lx2c_c2u = ((.not.analytic_pvp .or. modelpot_2e).and.lx2c_u2c)
+      lx2c_c2u = lx2c_u2c
+
       if (master.and.lx2c_c2u) write (luout,*)
      &  'x2c INFO: x2c options require constructing the c2u trafo'
 
@@ -684,7 +686,7 @@ c     in src/NWints/dk/int_1edk_ga.F
 c     call ga_pdsygv(g_h, g_m, g_temp, dbl_mb(k_eval))
       info= ga_cholesky('L', g_m)
       info = ga_llt_i('L', g_m, -1)
-      info = ga_cholesky('L', g_m, -1)
+      info = ga_cholesky('L', g_m)
       
       call ga_dgemm('t','n',nu2, nu2, nu2, 1.0d0,
      &  g_m, g_h, 0.0d0, g_temp)
@@ -968,7 +970,14 @@ c     --------
         call ga_print(g_x2c)
       end if
 
-      oskel = oskel_sav ! restore oskel value
+      oskel = oskel_sav         ! restore oskel value
+
+      call ga_inquire_name(g_u2c,ctmp)
+      if(master) write (luout,*) 'u2c ga# and name: ',
+     &  g_u2c, trim(ctmp)
+      call ga_inquire_name(g_c2u,ctmp)
+      if(master) write (luout,*) 'c2u ga# and name: ',
+     &  g_c2u, trim(ctmp)
       
       if (dbg>0.and.master) write(luout,*) 'leaving x2c_1e_scalar'
 

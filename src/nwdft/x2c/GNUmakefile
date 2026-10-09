@@ -11,6 +11,7 @@
        calc_x2c_wefg_scalar.o \
        calc_x2c_wmoment_scalar.o \
        calc_x2c_hfc_scalar.o \
+       calc_x2c_hfc_scalar_test1e.o \
        write_x2c_pc_dip.o \
        read_x2c_pc_dip.o \
        x2c_utils.o \

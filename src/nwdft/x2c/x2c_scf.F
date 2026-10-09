@@ -67,22 +67,26 @@ c     deallocate x2c arrays if necessary
       return
       end
       subroutine x2c_prop(rtdb,
-     &     nexc, g_dens, g_dens_at, g_x2c_u, g_x2c_u2c, g_x2c_c2u)
+     &     nexc, g_dens, g_dens_at, g_x2c_u, g_x2c_u2c, g_x2c_c2u,
+     &     g_movecs)
       implicit none
       integer rtdb
-      integer nexc, g_dens, g_dens_at, g_x2c_u, g_x2c_u2c, g_x2c_c2u
+      integer nexc, g_dens, g_dens_at,g_x2c_u,g_x2c_u2c,g_x2c_c2u
+      integer g_movecs(2)
+      logical ltemp
 #include "rtdb.fh"
 #include "mafdecls.fh"
 #include "global.fh"
 #include "stdio.fh"
 #include "x2c_scf.fh"
 c
+c      write (luout,*) 'x2c_prop:', g_movecs(1), g_movecs(2)
       if (lx2c_efg) then
 c     x2c EFG 
         if (ga_nodeid().eq.0)
      &    write (luout,*) 'calling calc_x2c_efg_scalar' 
-        call calc_x2c_efg_scalar(rtdb,
-     &    nexc, g_dens, g_dens_at, g_x2c_u)
+        call calc_x2c_efg_scalar(rtdb, lx2c_u2c,
+     &    nexc, g_dens, g_dens_at, g_x2c_u, g_x2c_u2c, g_x2c_c2u)
       end if
       
       if (lx2c_hfc) then
@@ -91,6 +95,15 @@ c     x2c hyperfine coupling
      &        write (luout,*) 'calling calc_x2c_hfc_scalar' 
          call calc_x2c_hfc_scalar(rtdb, lx2c_u2c,
      &     nexc, g_dens, g_dens_at, g_x2c_u, g_x2c_u2c, g_x2c_c2u)
+         if(rtdb_get(rtdb,'x2c:hfc:test1e',MT_LOG,1,ltemp)) then
+            if (ltemp) then 
+              if (ga_nodeid().eq.0)
+     &           write (luout,*) 'calling calc_x2c_hfc_test1e'
+              call calc_x2c_hfc_scalar_test1e(rtdb, lx2c_u2c,
+     &           nexc, g_dens, g_dens_at, g_x2c_u, g_x2c_u2c,
+     &           g_x2c_c2u, g_movecs)
+            end if
+         end if
 
       end if       
       

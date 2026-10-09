@@ -2,7 +2,7 @@
      t     toll_s,
      d     do_x2c,
      g     g_vxc,g_rel,g_dens_at,
-     g     g_x2c_u,g_x2c_u2c,
+     g     g_x2c_u,g_x2c_u2c,g_x2c_c2u,
      N     nbf_ao)
       implicit none
 #include "rtdb.fh"
@@ -12,10 +12,10 @@
       integer rtdb,nexc,ipol
       double precision toll_s
       logical do_x2c
-      integer g_vxc(*) ! [input]
-      integer g_rel(*)          ! [output]
-      integer g_dens_at(*)
-      integer g_x2c_u(*),g_x2c_u2c,g_x2c_c2u
+      integer g_vxc(4) ! [input]
+      integer g_rel(2)          ! [output]
+      integer g_dens_at(2)
+      integer g_x2c_u(2),g_x2c_u2c,g_x2c_c2u
       integer nbf_ao
 c
       integer me

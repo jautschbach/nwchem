@@ -820,7 +820,7 @@ c       == -> g_zora_Kinetic is defined in zora.fh ==
      t     toll_s,
      d     do_x2c,
      g     g_vxc,g_rel,g_dens_at,
-     g     g_x2c_u,g_x2c_u2c,
+     g     g_x2c_u,g_x2c_u2c,g_x2c_c2u,
      N     nbf_ao)
      
 c      
@@ -1958,8 +1958,11 @@ c     AOR end
 
 c ... jochen: calculate x2c properties if so requested:
       if (do_x2c) then
+c         write (luout,*) 'callng x2c_prop with movecs args.',
+c     &    g_movecs(1), g_movecs(2)
          call x2c_prop(rtdb,
-     N     nexc, g_dens, g_dens_at, g_x2c_u)
+     N     nexc, g_dens, g_dens_at, g_x2c_u, g_x2c_u2c, g_x2c_c2u,
+     &     g_movecs)
       end if ! do_x2c
 
 c     vdw  bit

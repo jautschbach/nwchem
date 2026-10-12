@@ -2,15 +2,19 @@
      &   g_dscf, g_dens_at, g_u, g_u2c, g_c2u)
 
 c     -----------------------------------------------------------------
-c     purpose: calculate one-electron property EFG using the 
+c     purpose: calculate one-electron property "EFG" using the 
 c     two-component exact-decoupling Hamiltonian
 
-c     For the time being we MUST use an uncontracted basis !
-
-c     Integrals are supposed to be initialized by the calling
-c     routine.
-
 c     Driver (c) 2012, 2022 J. Autschbach, SUNY, jochena@buffalo.edu
+
+c     update 2026: the code now accepts cases with contracted basis sets
+c     and performs the same gymnastics as the routine for the
+c     Hamiltonian to create the EFG operator first in the uncontracted
+c     basis. The only caveat is that the operator in the small-component
+c     basis is currently done by numerical integration, which relies on
+c     the contraced basis. A suitable workaround is to use an
+c     uncontracted basis on the element for which the EFG is calculated;
+c     otherwise, there will be inaccuracies.
 
 c     Approach: The transformation matrices g_u etc. come from
 c     calc_x2c_1e if certain options are set.
@@ -19,7 +23,11 @@ c     instead of calculating the operator in the uncontracted basis,
 c     then re-contracting, and then calculating the property, we keep
 c     the operator in the uncontracted basis and simply transform the
 c     density matrix to the same basis, assuming the result to be
-c     equivalent.
+c     equivalent. Once we have eliminated the need to calculate the
+c     operator in the small-component basis numerically, we can test
+c     whether the density matrix transformation to uncontracted gives
+c     the same results as transforming the EFG operator to the
+c     contracted basis.
 c
 c     -----------------------------------------------------------------
 
@@ -110,7 +118,7 @@ c     ---------------
 
 c     options / settings
 
-      dbg=1
+      dbg=1 ! debug switch during code development
 
       me=ga_nodeid()
       master = me.eq.0
@@ -164,14 +172,15 @@ c     basis
         if(dbg>0.and.master) write (luout,*) 'c2u ga# and name: ',
      &    g_c2u, trim(ctmp)
 
+c       uncontracted basis 
         ubas = x2c_bas
-
         if (.not. bas_numbf(ubas,nubas))
-     &    call errquit(pname//': nbas x2c error',nubas, BASIS_ERR)
-        cbas = ao_bas_han
+     &    call errquit(pname//': nubas error 1',nubas, BASIS_ERR)
 
+c       contracted basis
+        cbas = ao_bas_han
         if (.not. bas_numbf(cbas,ncbas))
-     &    call errquit(pname//': nbas ao error',nubas, BASIS_ERR)
+     &    call errquit(pname//': ncbas error',ncbas, BASIS_ERR)
 
         if (master) write(luout,*)
      &    pname//': working with uncontracted auxiliary basis'
@@ -188,12 +197,18 @@ c       make sure we have the correct u2c and c2u arrays
 
         if (dbg>0.and.master) write(luout,*) 'ncbas,nubas =',ncbas,nubas
 
+c       the uncontracted basis ought to have more functions than the
+c       contracted basis, so we error exit if that is not the case
+
+        if (ncbas.gt.nubas)
+     &    call errquit(pname//
+     &    ': nc > nu must not happen',ncbas-nubas, BASIS_ERR)
       else
 
         ubas = ao_bas_han
 
         if (.not. bas_numbf(ubas,nubas))
-     &    call errquit(pname//': nbas ao error',nubas, BASIS_ERR)
+     &    call errquit(pname//': nubas error 2',nubas, BASIS_ERR)
 
         cbas = ubas
         ncbas = nubas
@@ -201,18 +216,21 @@ c       make sure we have the correct u2c and c2u arrays
         if (master) write(luout,*)
      &    pname//': the basis seems to be fully uncontracted ...'
 
-      end if
+        if (master.and.dbg>0) write (luout,*) pname//': nubas =',nubas
+
+      end if                    ! needu2c
 
 c     make sure the input GAs for the transformation have the correct
 c     dimension
 
       call ga_inquire(g_u(1),type,ntemp,ntemp)
-
       if (nubas.ne.ntemp) then
-        call errquit(pname//': inconsistent dim. for g_u',nubas,GA_ERR)
+        call errquit(pname//': inconsistent dim. for g_u1',nubas,GA_ERR)
       end if
-
-      if (master.and.dbg>0) write (luout,*) pname//': nubas =',nubas
+      call ga_inquire(g_u(2),type,ntemp,ntemp)
+      if (nubas.ne.ntemp) then
+        call errquit(pname//': inconsistent dim. for g_u2',nubas,GA_ERR)
+      end if
 
 c     now that we have everything set for the contracted/uncontracted
 c     scheme, let's calculate the density matrix in the uncontracted
@@ -311,12 +329,12 @@ c     can now calculate N = tr[P S] with the array g_densu
      &  errquit(pname//': ga_create failed g_s',11,GA_ERR)
       call ga_zero(g_s)
 
-      if (ocache) call int_1e_uncache_ga()
+      if (ocache) call int_1e_uncache_ga() ! needed?
       call int_1e_ga(ubas, ubas , g_s, 'overlap', oskel)
 
-!      call ga_symmetrize(g_s) ! not sure we need this
+c      call ga_symmetrize(g_s) ! not sure we need this
 
-      call ga_sync() ! also not sure we need this ...
+c      call ga_sync() ! also not sure we need this ...
 
       if (.not. ga_create(MT_DBL,nubas,nubas,'g_temp',1,1,g_temp)) call
      &  errquit(pname//': ga_create g_temp failed',59,GA_ERR)
@@ -340,7 +358,7 @@ c      ------------- Calculate EFG -------------
 
 c     initialize integrals that were not already initialized
 
-c      call hnd_giao_init(ubas,1)
+      call hnd_giao_init(ubas,1)
 
 c     ----- define points for calculation -----
 c           1. nuclei: for now, we take ALL nuclei
@@ -355,7 +373,7 @@ c
       do  iat=1,nat
         status=geom_cent_get(geom,iat,at_tag,dbl_mb(k_xyzpt+3*(iat-1)),
      &     dbl_mb(k_zanpt+iat-1))
-       end do
+      end do
 
       alo(1) = nubas
       alo(2) = -1
@@ -713,7 +731,7 @@ c         to the uncontracted basis first:
             call ga_dgemm('t','n',nubas,nubas,ncbas ,1.0d0,
      &        g_c2u, g_tmp2, 1.0d0,g_wtmp)
           else
-            g_wtmp = g_w(i)
+            g_wtmp = g_w(i) ! another EQUIVALENCE equivalence
           end if ! needu2c
         
           
@@ -793,10 +811,10 @@ c       --------------------
      &       (pname//': failed destroying g_w',1+10*j, GA_ERR)
         end do
 
-c       --------------------------------------------------------
-c       end loop over refernce points at which EFG is calculated
+c       ---------------------------------------------------------
+c       end loop over reference points at which EFG is calculated
 c       (typically the list of nuclei)
-c       --------------------------------------------------------
+c       ---------------------------------------------------------
 
       end do ! iat, loop over nuclei
 
@@ -813,11 +831,15 @@ c       --------------------------------------------------------
       end if                    ! needu2c
         
 
-c     --------
-c     all done
-c     --------
+c     ----------------------------
+c     all done. cleanup and return
+c     ----------------------------
 
-      call ga_sync()     
+      call ga_sync()
+
+c     restore value of oskel
+
+      oskel = oskel_sav
 
       if (dbg>0.and.master) write(luout,*) 'leaving x2c_efg'
 

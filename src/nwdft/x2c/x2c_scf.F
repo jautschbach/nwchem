@@ -71,7 +71,11 @@ c     deallocate x2c arrays if necessary
      &     g_movecs)
       implicit none
       integer rtdb
-      integer nexc, g_dens, g_dens_at,g_x2c_u,g_x2c_u2c,g_x2c_c2u
+      integer nexc
+      integer g_dens(2)
+      integer g_dens_at(2)
+      integer g_x2c_u(2)
+      integer g_x2c_u2c, g_x2c_c2u
       integer g_movecs(2)
       logical ltemp
 #include "rtdb.fh"
@@ -95,6 +99,7 @@ c     x2c hyperfine coupling
      &        write (luout,*) 'calling calc_x2c_hfc_scalar' 
          call calc_x2c_hfc_scalar(rtdb, lx2c_u2c,
      &     nexc, g_dens, g_dens_at, g_x2c_u, g_x2c_u2c, g_x2c_c2u)
+
          if(rtdb_get(rtdb,'x2c:hfc:test1e',MT_LOG,1,ltemp)) then
             if (ltemp) then 
               if (ga_nodeid().eq.0)
